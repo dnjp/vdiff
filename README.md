@@ -1,3 +1,7 @@
+<div style="text-align:center">
+  <img src="https://raw.githubusercontent.com/dnjp/vdiff/master/resources/screenshot.png" alt="drawing" width="512"/>
+</div>
+
 # vdiff
 
 This is a fork of [phil9's vdiff](https://shithub.us/phil9/vdiff/HEAD/info.html)
