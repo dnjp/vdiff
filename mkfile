@@ -1,8 +1,9 @@
-</$objtype/mkfile
+<$PLAN9/src/mkhdr
 
+# objtype is no longer set in p9p - set this yourself.
 BIN=$home/bin/$objtype
 CFLAGS=-FTVw
 TARG=vdiff
 OFILES=vdiff.$O
 
-</sys/src/cmd/mkone
+<$PLAN9/src/mkone
