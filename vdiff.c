@@ -42,7 +42,7 @@ enum
 	Ldel,
 	Lnone,
 	Ncols,
-};	
+};
 
 enum
 {
@@ -79,6 +79,33 @@ const char ellipsis[] = "...";
 int ellipsisw;
 int spacew;
 
+void
+plumb(char *f, int l)
+{
+	/*
+	In plan9port libplumb depends on lib9pclient which depends on libthread.
+	Just invoke plumb(1) on plan9port instead of migrating vdiff to libthread.
+	*/
+	pid_t pid = fork();
+	if(pid==-1)
+		fprint(2, "fork failed");
+	else if(pid>0)
+		free(wait());
+	else{
+		char addr[300]={0};
+		char *argv[7];
+		int i = 0;
+		snprint(addr, sizeof addr, "%s:%d", f, l);
+		argv[i++] = "plumb";
+		argv[i++] = "-s"; argv[i++] = "vdiff";
+		argv[i++] = "-d"; argv[i++] = "edit";
+		argv[i++] = addr;
+		argv[i++] = nil;
+		exec("plumb", argv);
+	}
+}
+
+
 void*
 emalloc(ulong n)
 {
@@ -99,24 +126,6 @@ erealloc(void *p, ulong n)
 	if(q == nil)
 		sysfatal("realloc: %r");
 	return q;
-}
-
-void
-plumb(char *f, int l)
-{
-	int fd, i;
-	char *p, wd[256], addr[300]={0};
-
-	fd = plumbopen("send", OWRITE);
-	if(fd<0)
-		return;
-	for(i = 0; i < nstrip; i++)
-		if((p = strchr(f, '/')) != nil)
-			f = p+1;
-	getwd(wd, sizeof wd);
-	snprint(addr, sizeof addr, "%s:%d", f, l);
-	plumbsendtext(fd, "vdiff", "edit", wd, addr);
-	close(fd);
 }
 
 void
@@ -581,7 +590,7 @@ void
 usage(void)
 {
 	fprint(2, "%s [-b] [-p n]\n", argv0);
-	exits("usage");
+	threadexitsall("usage");
 }
 
 void
@@ -616,7 +625,7 @@ threadmain(int argc, char *argv[])
 	parse(0);
 	if(nblocks==0){
 		fprint(2, "no diff\n");
-		exits(nil);
+		threadexitsall(nil);
 	}
 	if(initdraw(nil, nil, "vdiff")<0)
 		sysfatal("initdraw: %r");

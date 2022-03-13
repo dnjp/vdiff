@@ -1,7 +1,7 @@
 <$PLAN9/src/mkhdr
 
 # objtype is no longer set in p9p - set this yourself.
-BIN=$home/bin/$objtype
+BIN=.
 CFLAGS=-FTVw
 TARG=vdiff
 OFILES=vdiff.$O
