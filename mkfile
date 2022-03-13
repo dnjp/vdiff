@@ -7,3 +7,6 @@ TARG=vdiff
 OFILES=vdiff.$O
 
 <$PLAN9/src/mkone
+
+upstream:V:
+	git remote add upstream git://shithub.us/phil9/vdiff
