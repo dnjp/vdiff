@@ -1,5 +1,5 @@
 <div style="text-align:center">
-  <img src="https://raw.githubusercontent.com/dnjp/vdiff/master/resources/screenshot.png" alt="drawing" width="512"/>
+  <img src="https://raw.githubusercontent.com/dnjp/vdiff/master/resources/screenshot.png" alt="drawing" />
 </div>
 
 # vdiff
