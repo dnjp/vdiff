@@ -23,4 +23,6 @@ install o.vdiff /Users/daniel/bin/arm64/vdiff
 A git/diff output viewer.
 Right-clicking a diff line will open the file at the given line in the editor
 
-Usage: git diff | vdiff
+```
+git diff | vdiff
+```
