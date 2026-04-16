@@ -5,12 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"image"
+	"io"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 
 	"9fans.net/go/draw"
+	"9fans.net/go/plumb"
 )
 
 const (
@@ -78,12 +80,29 @@ var (
 )
 
 // plumb opens file:line in the editor via the plumber.
-// We shell out to plumb(1) rather than using libplumb to avoid
-// the thread-library entanglement present in the original C code.
-func plumb(f string, l int) {
-	addr := fmt.Sprintf("%s:%d", f, l)
-	cmd := exec.Command("plumb", "-s", "vdiff", "-d", "edit", addr)
-	cmd.Start() //nolint:errcheck
+func plumbLine(f string, l int) {
+	go func() {
+		wd, err := os.Getwd()
+		if err != nil {
+			wd = "."
+		}
+		msg := &plumb.Message{
+			Src:  "vgit",
+			Dst:  "edit",
+			Dir:  wd,
+			Type: "text",
+			Data: []byte(fmt.Sprintf("%s:%d", f, l)),
+		}
+		fid, err := plumb.Open("send", 1) // plan9.OWRITE
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "plumb open: %v\n", err)
+			return
+		}
+		defer fid.Close()
+		if err := msg.Send(fid); err != nil {
+			fmt.Fprintf(os.Stderr, "plumb send: %v\n", err)
+		}
+	}()
 }
 
 func ecolor(n draw.Color) *draw.Image {
@@ -377,7 +396,7 @@ func blockMouse(b *block, m draw.Mouse) {
 	} else if n > 0 && m.Buttons&4 != 0 && n-1 < len(b.lines) {
 		l := b.lines[n-1]
 		if l.t != lSep {
-			plumb(b.f, l.n)
+			plumbLine(b.f, l.n)
 		}
 	}
 }
@@ -457,8 +476,8 @@ func lineNo(s string) int {
 	return n
 }
 
-func parse() {
-	scanner := bufio.NewScanner(os.Stdin)
+func parse(r io.Reader) {
+	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 1<<20), 1<<20) // 1 MiB per line
 
 	b := &block{v: true}
@@ -505,24 +524,13 @@ func parse() {
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: %s [-b] [-p n]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "usage: %s [-b] diff [<path>...]\n", os.Args[0])
 	os.Exit(2)
 }
 
-func main() {
-	black := flag.Bool("b", false, "use dark color scheme")
-	flag.Int("p", 0, "strip n leading path components (retained for compatibility)")
-	flag.Usage = usage
-	flag.Parse()
-
-	parse()
-	if len(blocks) == 0 {
-		fmt.Fprintln(os.Stderr, "no diff")
-		os.Exit(0)
-	}
-
+func startUI(black bool) {
 	var err error
-	disp, err = draw.Init(nil, "", "vdiff", "")
+	disp, err = draw.Init(nil, "", "vgit", "")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "initdraw: %v\n", err)
 		os.Exit(1)
@@ -531,7 +539,7 @@ func main() {
 	mc = disp.InitMouse()
 	kc = disp.InitKeyboard()
 
-	initCols(*black)
+	initCols(black)
 	initIcons()
 
 	spaceW = disp.Font.StringWidth(" ")
@@ -550,5 +558,46 @@ func main() {
 		case k := <-kc.C:
 			eKeyboard(k)
 		}
+	}
+}
+
+func cmdDiff(black bool, paths []string) {
+	args := append([]string{"diff"}, paths...)
+	cmd := exec.Command("git", args...)
+	cmd.Stderr = os.Stderr
+	r, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "pipe: %v\n", err)
+		os.Exit(1)
+	}
+	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "git diff: %v\n", err)
+		os.Exit(1)
+	}
+	parse(r)
+	cmd.Wait() //nolint:errcheck
+
+	if len(blocks) == 0 {
+		fmt.Fprintln(os.Stderr, "no diff")
+		os.Exit(0)
+	}
+	startUI(black)
+}
+
+func main() {
+	black := flag.Bool("b", false, "use dark color scheme")
+	flag.Usage = usage
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) == 0 {
+		usage()
+	}
+
+	switch args[0] {
+	case "diff":
+		cmdDiff(*black, args[1:])
+	default:
+		usage()
 	}
 }
