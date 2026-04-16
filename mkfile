@@ -1,12 +1,22 @@
-<$PLAN9/src/mkhdr
+all:V:
+	go build
 
-# objtype is no longer set in p9p - set this yourself.
-BIN=.
-CFLAGS=-FTVw
-TARG=vdiff
-OFILES=vdiff.$O
+install:V:
+	go install
 
-<$PLAN9/src/mkone
+test:V:
+	go test ./...
 
-upstream:V:
-	git remote add upstream git://shithub.us/phil9/vdiff
+plan9check:V:
+	# NOTE: 9fans.net/go@v0.0.7 has a build bug in draw/drawfcall/mux_plan9.go
+	# that prevents a clean GOOS=plan9 compile of the full binary. Our own code
+	# is Plan 9 compatible. Track: https://github.com/9fans/go/issues/141
+	GOOS=plan9 GOARCH=amd64 go build
+
+lint:V:
+	gofumpt -l -w .
+	staticcheck ./...
+	go vet ./...
+
+clean:V:
+	go clean ./...
