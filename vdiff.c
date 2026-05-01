@@ -639,7 +639,7 @@ threadmain(int argc, char *argv[])
 	a[Ekeyboard].c = kctl->c;
 	initcols(b);
 	initicons();
-	spacew = stringwidth(font, " ");
+	spacew = stringwidth(font, "0");
 	ellipsisw = stringwidth(font, ellipsis);
 	eresize(0);
 	for(;;){
